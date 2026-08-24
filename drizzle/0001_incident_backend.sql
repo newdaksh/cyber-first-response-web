@@ -36,3 +36,5 @@ CREATE INDEX IF NOT EXISTS idx_evidence_incident
   ON evidence_objects(incident_id);
 
 PRAGMA optimize;
+
+

@@ -16,7 +16,7 @@ This is not a government service. It does not submit to NCRP, connect to 1930 or
 - `lib/server/store.ts` — D1 persistence, private session ownership, and R2 evidence storage
 - `lib/server/workflow.ts` — server-authoritative workflow transitions
 - `lib/services.ts` — incident analysis, response plans, timelines, and complaint generation
-- `db/schema.ts` and `migrations/` — Sites D1 schema
+- `db/schema.ts` and `drizzle/` — Sites D1 schema and deployable migration
 - `tests/core.test.mjs` — dependency-free reliability tests for the critical pipeline
 
 ## Local commands
