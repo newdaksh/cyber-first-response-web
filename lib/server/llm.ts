@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import type { ClassificationResult, Incident, TimelineEvent } from '../incident';
 import { analysisService, parseClock, validateClassification } from '../services';
+import type { IncidentType } from '../incident';
 
 const endpoint = () => env.MESH_API_ENDPOINT || 'https://api.meshapi.ai/v1/chat/completions';
 const model = () => env.MESH_API_MODEL || 'google/gemini-2.5-flash-lite';
@@ -11,7 +12,7 @@ export const meshAnalysisService = {
     const result = await completeJson<ClassificationResult>([
       'Classify a reported cybercrime incident for a first-response workflow.',
       'Return JSON only with incidentType, confidence, severity, rationale, and playbook.',
-      'incidentType must be one of: upi_payment_fraud, bank_otp_fraud, investment_scam, phishing, account_takeover, digital_arrest, other.',
+      'incidentType must be one of: upi_payment_fraud, card_or_banking_fraud, investment_or_crypto_scam, impersonation_or_digital_arrest, phishing_or_vishing, account_takeover, social_media_abuse, cyber_stalking_or_bullying, sextortion_or_intimate_content, child_safety_or_grooming, job_loan_or_marketplace_scam, romance_or_matrimonial_scam, identity_theft_or_sim_swap, lost_or_stolen_phone, ransomware_or_malware, hacking_or_data_breach, website_defacement, online_gambling, online_trafficking, suspicious_identifier, other.',
       'severity must be one of: low, medium, high, critical. Do not give legal advice or invent facts.',
       `Untrusted report:\n${description}`,
     ].join('\n'));
@@ -22,7 +23,7 @@ export const meshAnalysisService = {
     const fallback = await analysisService.extractIncident(description);
     const result = await completeJson<Record<string, unknown>>([
       'Extract only explicit facts from this cybercrime report.',
-      'Return JSON only with language (en, hi, or hinglish), amount (number or null), otpInvolved (boolean), bank (string or null), paymentMethod (string or null), incidentDate (string or null), incidentTime (string or null), and entities.',
+      'Return JSON only with language (en, hi, or hinglish), amount (number or null), otpInvolved (boolean), bank (string or null), affectedService (string or null), paymentMethod (string or null), incidentDate (string or null), incidentTime (string or null), and entities.',
       'entities must contain arrays phoneNumbers, upiIds, bankAccounts, urls, emails, and transactionIds. Never infer missing values.',
       `Untrusted report:\n${description}`,
     ].join('\n'));
@@ -104,6 +105,7 @@ function mergeExtraction(fallback: Awaited<ReturnType<typeof analysisService.ext
     amount,
     otpInvolved: typeof value.otpInvolved === 'boolean' ? value.otpInvolved : fallback.otpInvolved,
     bank: safeText(value.bank, 120) || fallback.bank,
+    affectedService: safeText(value.affectedService, 120) || fallback.affectedService,
     paymentMethod: safeText(value.paymentMethod, 80) || fallback.paymentMethod,
     incidentDate: safeText(value.incidentDate, 80) || fallback.incidentDate,
     incidentTime: safeText(value.incidentTime, 80) || fallback.incidentTime,
@@ -139,6 +141,6 @@ function normalizeTimeline(value: unknown): TimelineEvent[] {
 
 function safeText(value: unknown, max: number) { return typeof value === 'string' ? value.trim().slice(0, max) : ''; }
 function safeList(value: unknown, fallback: string[]) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim().slice(0, 200)).filter(Boolean).slice(0, 20) : fallback; }
-function validType(value: unknown) { return typeof value === 'string' && ['upi_payment_fraud', 'bank_otp_fraud', 'investment_scam', 'phishing', 'account_takeover', 'digital_arrest', 'other'].includes(value); }
+function validType(value: unknown): value is IncidentType { return typeof value === 'string' && ['upi_payment_fraud', 'card_or_banking_fraud', 'investment_or_crypto_scam', 'impersonation_or_digital_arrest', 'phishing_or_vishing', 'account_takeover', 'social_media_abuse', 'cyber_stalking_or_bullying', 'sextortion_or_intimate_content', 'child_safety_or_grooming', 'job_loan_or_marketplace_scam', 'romance_or_matrimonial_scam', 'identity_theft_or_sim_swap', 'lost_or_stolen_phone', 'ransomware_or_malware', 'hacking_or_data_breach', 'website_defacement', 'online_gambling', 'online_trafficking', 'suspicious_identifier', 'other'].includes(value); }
 function validSeverity(value: unknown) { return value === 'low' || value === 'medium' || value === 'high' || value === 'critical'; }
 function stripCodeFence(value: string) { return value.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim(); }

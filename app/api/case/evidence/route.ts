@@ -1,5 +1,5 @@
 import { analysisService } from '../../../../lib/services';
-import { errorResponse, json, requireRevision, text } from '../../../../lib/server/http';
+import { errorResponse, json, requireRevision } from '../../../../lib/server/http';
 import { assertSameOrigin, getSession, loadCurrentSnapshot, putEvidenceObject, saveEvidenceObject, saveSnapshot, StoreError, withSessionCookie } from '../../../../lib/server/store';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -42,9 +42,11 @@ export async function POST(request: Request) {
     changed.incident.evidence = [...changed.incident.evidence, result.evidence];
     changed.incident.entities = {
       ...changed.incident.entities,
-      upiIds: appendUnique(changed.incident.entities.upiIds, result.detected.upiId),
+      upiIds: appendUnique(changed.incident.entities.upiIds, result.detected.recipient),
       transactionIds: appendUnique(changed.incident.entities.transactionIds, result.detected.transactionId),
-      phoneNumbers: appendUnique(changed.incident.entities.phoneNumbers, result.detected.phoneNumber),
+      phoneNumbers: appendUnique(changed.incident.entities.phoneNumbers, result.detected.contact),
+      urls: appendUnique(changed.incident.entities.urls, result.detected.url),
+      emails: appendUnique(changed.incident.entities.emails, result.detected.email),
     };
     const snapshot = await saveSnapshot(session.id, changed, current.revision);
     return withSessionCookie(json({ snapshot }, 201), request, session);
@@ -54,16 +56,9 @@ export async function POST(request: Request) {
 }
 
 function manualEvidence(form: FormData, file: File) {
-  const detected = {
-    amount: text(form.get('amount'), 40, 'Amount'),
-    transactionId: text(form.get('transactionId'), 120, 'Transaction ID'),
-    date: text(form.get('date'), 80, 'Transaction date'),
-    time: text(form.get('time'), 80, 'Transaction time'),
-    ...(optional(form, 'upiId') && { upiId: optional(form, 'upiId') }),
-    ...(optional(form, 'recipient') && { recipient: optional(form, 'recipient') }),
-    paymentStatus: optional(form, 'paymentStatus') || 'Reported by complainant',
-    ...(optional(form, 'phoneNumber') && { phoneNumber: optional(form, 'phoneNumber') }),
-  };
+  const keys = ['date', 'time', 'platform', 'contact', 'username', 'url', 'email', 'amount', 'transactionId', 'recipient', 'accountId', 'device', 'imei', 'chatHistory', 'policeReport'];
+  const detected = Object.fromEntries(keys.map((key) => [key, optional(form, key)]).filter(([, value]) => Boolean(value))) as Record<string, string>;
+  detected.screenshot = `Supporting file: ${file.name}`;
   return { evidence: { id: crypto.randomUUID(), name: file.name, type: file.type === 'application/pdf' ? 'Evidence document' : 'Evidence image', status: 'manual' as const, extracted: detected }, detected };
 }
 

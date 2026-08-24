@@ -17,7 +17,7 @@ async function request(path, init = {}) {
 
 const reset = await request('/api/case', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reset' }) });
 const demo = await command('loadDemo', reset.snapshot.revision);
-const clarified = await command('clarify', demo.snapshot.revision, { bank: 'Demo Bank', time: '10:51 AM, 23 Aug 2026' });
+const clarified = await command('clarify', demo.snapshot.revision, { service: 'Demo Bank', time: '10:51 AM, 23 Aug 2026' });
 const evidenceStage = await command('advance', clarified.snapshot.revision, { to: 'EVIDENCE_COLLECTION' });
 
 const evidenceForm = new FormData();
@@ -38,8 +38,8 @@ assert.equal(finalHandoff.snapshot.incident.status, 'HANDOFF');
 assert.equal(restored.snapshot.incident.id, finalHandoff.snapshot.incident.id);
 assert.equal(restored.snapshot.revision, finalHandoff.snapshot.revision);
 assert.equal(restored.snapshot.incident.evidence.length, 1);
-assert.equal(restored.snapshot.incident.timeline.length, 7);
-console.log(JSON.stringify({ status: restored.snapshot.incident.status, revision: restored.snapshot.revision, evidence: 1, timeline: 7 }));
+assert.equal(restored.snapshot.incident.timeline.length, 5);
+console.log(JSON.stringify({ status: restored.snapshot.incident.status, revision: restored.snapshot.revision, evidence: 1, timeline: 5 }));
 
 function command(action, revision, values = {}) {
   return request('/api/case', {

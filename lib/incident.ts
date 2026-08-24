@@ -1,6 +1,27 @@
 export type IncidentStatus = 'NEW' | 'INTAKE' | 'TRIAGE' | 'ACTION_REQUIRED' | 'EVIDENCE_COLLECTION' | 'TIMELINE_READY' | 'CASE_READY' | 'COMPLAINT_READY' | 'REVIEW' | 'HANDOFF';
 
-export type IncidentType = 'upi_payment_fraud' | 'bank_otp_fraud' | 'investment_scam' | 'phishing' | 'account_takeover' | 'digital_arrest' | 'other';
+export type IncidentType =
+  | 'upi_payment_fraud'
+  | 'card_or_banking_fraud'
+  | 'investment_or_crypto_scam'
+  | 'impersonation_or_digital_arrest'
+  | 'phishing_or_vishing'
+  | 'account_takeover'
+  | 'social_media_abuse'
+  | 'cyber_stalking_or_bullying'
+  | 'sextortion_or_intimate_content'
+  | 'child_safety_or_grooming'
+  | 'job_loan_or_marketplace_scam'
+  | 'romance_or_matrimonial_scam'
+  | 'identity_theft_or_sim_swap'
+  | 'lost_or_stolen_phone'
+  | 'ransomware_or_malware'
+  | 'hacking_or_data_breach'
+  | 'website_defacement'
+  | 'online_gambling'
+  | 'online_trafficking'
+  | 'suspicious_identifier'
+  | 'other';
 
 export interface ClassificationResult {
   incidentType: IncidentType;
@@ -20,6 +41,7 @@ export interface Incident {
   severity?: 'low' | 'medium' | 'high' | 'critical';
   amount?: number;
   bank?: string;
+  affectedService?: string;
   paymentMethod?: string;
   incidentDate?: string;
   incidentTime?: string;

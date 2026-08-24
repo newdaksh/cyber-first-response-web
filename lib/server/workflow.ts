@@ -8,7 +8,7 @@ export type CaseCommand =
   | { action: 'begin'; revision: number }
   | { action: 'loadDemo'; revision: number }
   | { action: 'analyze'; revision: number; description: string }
-  | { action: 'clarify'; revision: number; bank: string; time: string }
+  | { action: 'clarify'; revision: number; service: string; time: string }
   | { action: 'toggleAction'; revision: number; actionId: string }
   | { action: 'advance'; revision: number; to: 'EVIDENCE_COLLECTION' | 'CASE_READY' }
   | { action: 'back'; revision: number }
@@ -66,7 +66,10 @@ export async function applyCaseCommand(current: IncidentSnapshot, command: CaseC
     }
     case 'clarify':
       expectStatus(incident.status, ['TRIAGE']);
-      incident.bank = text(command.bank, 120, 'Bank');
+      incident.affectedService = text(command.service, 120, 'Affected service or platform');
+      if (['upi_payment_fraud', 'card_or_banking_fraud', 'investment_or_crypto_scam', 'identity_theft_or_sim_swap'].includes(incident.incidentType ?? '')) {
+        incident.bank ||= incident.affectedService;
+      }
       incident.incidentTime = text(command.time, 100, 'Incident time');
       incident.incidentDate ||= incident.incidentTime.match(/\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\b/)?.[0];
       incident.status = 'ACTION_REQUIRED';
