@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createFreshIncident, statusOrder, type ClassificationResult, type Incident, type IncidentSnapshot, type IncidentStatus } from '../lib/incident';
 import { calculateEvidenceCompleteness, demoDescription, officialReportingUrl } from '../lib/presentation';
 
@@ -23,6 +24,8 @@ const typeLabels: Record<string, string> = {
 const requiredEvidence = [
   ['Transaction screenshot', 'paymentStatus'], ['Amount', 'amount'], ['Transaction ID', 'transactionId'], ['Timestamp', 'time'], ['UPI ID', 'upiId'], ['Phone number', 'phoneNumber'], ['Chat history', 'chatHistory'], ['Bank account details', 'bankAccount'],
 ];
+
+const minimumLoaderDurationMs = 520;
 
 export default function Home() {
   const [incident, setIncident] = useState<Incident>(() => createFreshIncident());
@@ -118,11 +121,20 @@ export default function Home() {
   }
 
   async function saveClarification(formData: FormData) {
-    setBusy('Saving the incident details…'); setError('');
+    const submittedAt = performance.now();
+    flushSync(() => {
+      setBusy('Preparing your first-response plan…');
+      setError('');
+    });
+    await nextPaint();
     await nextPaint();
     try { await command('clarify', { bank: String(formData.get('bank') || ''), time: String(formData.get('time') || '') }); }
     catch (cause) { setError(messageFrom(cause)); }
-    finally { setBusy(null); }
+    finally {
+      const remainingLoaderTime = minimumLoaderDurationMs - (performance.now() - submittedAt);
+      if (remainingLoaderTime > 0) await wait(remainingLoaderTime);
+      setBusy(null);
+    }
   }
 
   async function toggleAction(id: string) {
@@ -277,6 +289,11 @@ function Intake({ mode, incident, busy, error, onDescription, onVoice, onAnalyze
 }
 
 function Triage({ incident, classification, missing, onSubmit, onBack, busy }: { incident: Incident; classification: ClassificationResult | null; missing: string[]; onSubmit: (data: FormData) => Promise<void>; onBack: () => void; busy: string | null }) {
+  async function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSubmit(new FormData(event.currentTarget));
+  }
+
   return <section className="workflow-page">
     <button className="back-link" onClick={onBack} type="button">← Back to your description</button>
     <div className="page-heading"><div><p className="section-kicker">Step 2 · Triage</p><h1 className="page-title">Here&apos;s what we understood.</h1><p className="page-lead">Please check these details. This is a possible classification, not an accusation or final determination.</p></div><div className="confidence"><span>{Math.round((incident.confidence ?? 0) * 100)}%</span><small>confidence</small></div></div>
@@ -289,7 +306,7 @@ function Triage({ incident, classification, missing, onSubmit, onBack, busy }: {
       <Detail label="Bank" value={incident.bank ?? 'We need this'} state={incident.bank ? 'found' : 'missing'} />
       <Detail label="Transaction ID" value={incident.entities.transactionIds[0] ?? 'We need this'} state={incident.entities.transactionIds.length ? 'found' : 'missing'} />
     </div>
-    <form className="clarify-card" action={onSubmit} aria-busy={Boolean(busy)}>
+    <form className="clarify-card" onSubmit={submitForm} aria-busy={Boolean(busy)}>
       <div className="card-heading"><span className="step-number light">?</span><div><h2>Two quick questions</h2><p>Only the details that change what you should do next.</p></div></div>
       <div className="form-grid"><label>Which bank was involved?<select name="bank" defaultValue=""><option value="" disabled>Select a fictional demo bank</option><option>Demo Bank</option><option>Sample Payments Bank</option><option>Bank not known</option></select></label><label>When did the transaction happen?<input name="time" defaultValue="10:51 AM, 23 Aug 2026" /></label></div>
       <p className="missing-note">Still okay to continue: {missing.includes('transactionId') ? 'transaction ID can be found from your screenshot.' : 'we have the essential details.'}</p>
@@ -361,3 +378,4 @@ function formatKey(key: string) { return key.replace(/([A-Z])/g, ' $1').replace(
 function messageFrom(cause: unknown) { return cause instanceof Error ? cause.message : 'The case service could not complete this request. Please retry.'; }
 function formatMoney(amount?: number) { return amount ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount) : ''; }
 function nextPaint() { return new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); }
+function wait(duration: number) { return new Promise<void>((resolve) => window.setTimeout(resolve, duration)); }
