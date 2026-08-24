@@ -11,6 +11,7 @@ export type CaseCommand =
   | { action: 'clarify'; revision: number; bank: string; time: string }
   | { action: 'toggleAction'; revision: number; actionId: string }
   | { action: 'advance'; revision: number; to: 'EVIDENCE_COLLECTION' | 'CASE_READY' }
+  | { action: 'back'; revision: number }
   | { action: 'timeline'; revision: number }
   | { action: 'complaint'; revision: number }
   | { action: 'editComplaint'; revision: number; draft: string }
@@ -82,6 +83,18 @@ export async function applyCaseCommand(current: IncidentSnapshot, command: CaseC
       transition(incident.status, command.to);
       incident.status = command.to;
       return next;
+    case 'back': {
+      const previous = previousStatus(incident.status);
+      if (!previous) throw new StoreError(409, 'There is no earlier step for this case.');
+      incident.status = previous;
+      if (previous === 'COMPLAINT_READY') {
+        incident.complaint = { ...incident.complaint, reviewed: false, handoffStatus: 'ready' };
+      }
+      if (previous === 'REVIEW') {
+        incident.complaint.handoffStatus = 'ready';
+      }
+      return next;
+    }
     case 'timeline':
       expectStatus(incident.status, ['EVIDENCE_COLLECTION']);
       if (!incident.evidence.length) throw new StoreError(400, 'Add an evidence item before building the timeline.');
@@ -118,4 +131,19 @@ function transition(from: IncidentStatus, to: IncidentStatus) {
 
 function expectStatus(actual: IncidentStatus, allowed: IncidentStatus[]) {
   if (!allowed.includes(actual)) throw new StoreError(409, `This action is not available while the case is ${actual}.`);
+}
+
+function previousStatus(status: IncidentStatus): IncidentStatus | null {
+  const steps: Partial<Record<IncidentStatus, IncidentStatus>> = {
+    INTAKE: 'NEW',
+    TRIAGE: 'INTAKE',
+    ACTION_REQUIRED: 'TRIAGE',
+    EVIDENCE_COLLECTION: 'ACTION_REQUIRED',
+    TIMELINE_READY: 'EVIDENCE_COLLECTION',
+    CASE_READY: 'TIMELINE_READY',
+    COMPLAINT_READY: 'CASE_READY',
+    REVIEW: 'COMPLAINT_READY',
+    HANDOFF: 'REVIEW',
+  };
+  return steps[status] ?? null;
 }

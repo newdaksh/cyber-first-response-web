@@ -29,11 +29,14 @@ const caseReady = await command('advance', timeline.snapshot.revision, { to: 'CA
 const complaint = await command('complaint', caseReady.snapshot.revision);
 const reviewed = await command('review', complaint.snapshot.revision, { draft: complaint.snapshot.incident.complaint.draft });
 const handoff = await command('handoff', reviewed.snapshot.revision);
+const returnedToReview = await command('back', handoff.snapshot.revision);
+const finalHandoff = await command('handoff', returnedToReview.snapshot.revision);
 const restored = await request('/api/case');
 
-assert.equal(handoff.snapshot.incident.status, 'HANDOFF');
-assert.equal(restored.snapshot.incident.id, handoff.snapshot.incident.id);
-assert.equal(restored.snapshot.revision, handoff.snapshot.revision);
+assert.equal(returnedToReview.snapshot.incident.status, 'REVIEW');
+assert.equal(finalHandoff.snapshot.incident.status, 'HANDOFF');
+assert.equal(restored.snapshot.incident.id, finalHandoff.snapshot.incident.id);
+assert.equal(restored.snapshot.revision, finalHandoff.snapshot.revision);
 assert.equal(restored.snapshot.incident.evidence.length, 1);
 assert.equal(restored.snapshot.incident.timeline.length, 7);
 console.log(JSON.stringify({ status: restored.snapshot.incident.status, revision: restored.snapshot.revision, evidence: 1, timeline: 7 }));
