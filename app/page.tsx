@@ -221,7 +221,7 @@ export default function Home() {
         {incident.status === 'NEW' && <Landing onBegin={begin} onDemo={loadDemo} busy={busy} />}
         {incident.status === 'INTAKE' && <Intake mode={mode} incident={incident} busy={busy} error={error} onDescription={(description) => updateLocal({ description })} onVoice={simulateVoice} onAnalyze={() => analyze()} onBack={goBack} />}
         {incident.status === 'TRIAGE' && <Triage incident={incident} classification={classification} missing={missing} onSubmit={saveClarification} onBack={goBack} busy={busy} />}
-        {incident.status === 'ACTION_REQUIRED' && <ActionPlan incident={incident} onToggle={toggleAction} onContinue={() => advance('EVIDENCE_COLLECTION')} onBack={goBack} />}
+        {incident.status === 'ACTION_REQUIRED' && <ActionPlan incident={incident} onToggle={toggleAction} onContinue={() => advance('EVIDENCE_COLLECTION')} onBack={goBack} busy={busy} />}
         {incident.status === 'EVIDENCE_COLLECTION' && <EvidenceScreen incident={incident} detected={detected} fileName={fileName} evidenceFields={evidenceFields} busy={busy} error={error} fileRef={fileRef} onChoose={() => fileRef.current?.click()} onFile={(name) => setFileName(name)} onField={(key, value) => setEvidenceFields((current) => ({ ...current, [key]: value }))} onExtract={extractEvidence} onContinue={buildTimeline} onBack={goBack} />}
         {incident.status === 'TIMELINE_READY' && <TimelineScreen incident={incident} onContinue={() => advance('CASE_READY')} onBack={goBack} />}
         {incident.status === 'CASE_READY' && <CaseFile incident={incident} completeness={calculateEvidenceCompleteness(detected)} onContinue={buildComplaint} onBack={goBack} busy={busy} error={error} />}
@@ -323,7 +323,8 @@ function Detail({ label, value, state }: { label: string; value: string; state: 
   return <div className={`detail-item ${state}`}><span className="detail-status">{state === 'found' ? '✓' : state === 'warning' ? '!' : '·'}</span><div><small>{label}</small><strong>{value}</strong></div></div>;
 }
 
-function ActionPlan({ incident, onToggle, onContinue, onBack }: { incident: Incident; onToggle: (id: string) => void; onContinue: () => void; onBack: () => void }) {
+function ActionPlan({ incident, onToggle, onContinue, onBack, busy }: { incident: Incident; onToggle: (id: string) => void; onContinue: () => void; onBack: () => void; busy?: string | null }) {
+  const allDone = incident.actionPlan.length > 0 && incident.actionPlan.every((item) => item.completed);
   return <section className="workflow-page action-page">
     <button className="back-link" onClick={onBack} type="button">← Back to incident details</button>
     <div className="first-30-header"><div className="timer-badge"><span>30</span><small>MIN</small></div><div><p className="section-kicker red">Priority response</p><h1>FIRST 30 MINUTES</h1><p>Your next actions matter. Act quickly—immediate reporting can help financial institutions and authorities respond to suspected fraudulent transactions.</p></div></div>
@@ -332,7 +333,7 @@ function ActionPlan({ incident, onToggle, onContinue, onBack }: { incident: Inci
       <aside className="help-card"><span className="phone-icon">☎</span><p className="section-kicker">Official helpline</p><h2>Call 1930</h2><p>India&apos;s official helpline for reporting cyber financial fraud.</p><div className="help-details"><span>Have ready</span><strong>Amount · time · bank · transaction reference</strong></div><a className="call-button" href="tel:1930">Call 1930 now</a><small>Opens your phone dialler. This prototype does not place or track the call.</small></aside>
     </div>
     <div className="preserve-banner"><span>▣</span><div><strong>Preserve this conversation and every receipt.</strong><p>Do not delete messages, call logs, screenshots, or transaction alerts that may support your complaint.</p></div></div>
-    <div className="page-actions"><button className="secondary-button" type="button" onClick={onBack}>← Back</button><button className="primary-button" type="button" onClick={onContinue}>Collect my evidence <span>→</span></button></div>
+    <div className="page-actions"><button className="secondary-button" type="button" onClick={onBack}>← Back</button><button className="primary-button" type="button" onClick={onContinue} disabled={Boolean(busy) || !allDone}>Collect my evidence <span>→</span></button></div>
   </section>;
 }
 
