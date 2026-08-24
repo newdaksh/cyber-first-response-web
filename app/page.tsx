@@ -119,6 +119,7 @@ export default function Home() {
 
   async function saveClarification(formData: FormData) {
     setBusy('Saving the incident details…'); setError('');
+    await nextPaint();
     try { await command('clarify', { bank: String(formData.get('bank') || ''), time: String(formData.get('time') || '') }); }
     catch (cause) { setError(messageFrom(cause)); }
     finally { setBusy(null); }
@@ -207,7 +208,7 @@ export default function Home() {
       <div id="main-content" tabIndex={-1}>
         {incident.status === 'NEW' && <Landing onBegin={begin} onDemo={loadDemo} busy={busy} />}
         {incident.status === 'INTAKE' && <Intake mode={mode} incident={incident} busy={busy} error={error} onDescription={(description) => updateLocal({ description })} onVoice={simulateVoice} onAnalyze={() => analyze()} onBack={goBack} />}
-        {incident.status === 'TRIAGE' && <Triage incident={incident} classification={classification} missing={missing} onSubmit={saveClarification} onBack={goBack} />}
+        {incident.status === 'TRIAGE' && <Triage incident={incident} classification={classification} missing={missing} onSubmit={saveClarification} onBack={goBack} busy={busy} />}
         {incident.status === 'ACTION_REQUIRED' && <ActionPlan incident={incident} onToggle={toggleAction} onContinue={() => advance('EVIDENCE_COLLECTION')} onBack={goBack} />}
         {incident.status === 'EVIDENCE_COLLECTION' && <EvidenceScreen incident={incident} detected={detected} fileName={fileName} evidenceFields={evidenceFields} busy={busy} error={error} fileRef={fileRef} onChoose={() => fileRef.current?.click()} onFile={(name) => setFileName(name)} onField={(key, value) => setEvidenceFields((current) => ({ ...current, [key]: value }))} onExtract={extractEvidence} onContinue={buildTimeline} onBack={goBack} />}
         {incident.status === 'TIMELINE_READY' && <TimelineScreen incident={incident} onContinue={() => advance('CASE_READY')} onBack={goBack} />}
@@ -275,7 +276,7 @@ function Intake({ mode, incident, busy, error, onDescription, onVoice, onAnalyze
   </section>;
 }
 
-function Triage({ incident, classification, missing, onSubmit, onBack }: { incident: Incident; classification: ClassificationResult | null; missing: string[]; onSubmit: (data: FormData) => void; onBack: () => void }) {
+function Triage({ incident, classification, missing, onSubmit, onBack, busy }: { incident: Incident; classification: ClassificationResult | null; missing: string[]; onSubmit: (data: FormData) => Promise<void>; onBack: () => void; busy: string | null }) {
   return <section className="workflow-page">
     <button className="back-link" onClick={onBack} type="button">← Back to your description</button>
     <div className="page-heading"><div><p className="section-kicker">Step 2 · Triage</p><h1 className="page-title">Here&apos;s what we understood.</h1><p className="page-lead">Please check these details. This is a possible classification, not an accusation or final determination.</p></div><div className="confidence"><span>{Math.round((incident.confidence ?? 0) * 100)}%</span><small>confidence</small></div></div>
@@ -288,11 +289,11 @@ function Triage({ incident, classification, missing, onSubmit, onBack }: { incid
       <Detail label="Bank" value={incident.bank ?? 'We need this'} state={incident.bank ? 'found' : 'missing'} />
       <Detail label="Transaction ID" value={incident.entities.transactionIds[0] ?? 'We need this'} state={incident.entities.transactionIds.length ? 'found' : 'missing'} />
     </div>
-    <form className="clarify-card" action={onSubmit}>
+    <form className="clarify-card" action={onSubmit} aria-busy={Boolean(busy)}>
       <div className="card-heading"><span className="step-number light">?</span><div><h2>Two quick questions</h2><p>Only the details that change what you should do next.</p></div></div>
       <div className="form-grid"><label>Which bank was involved?<select name="bank" defaultValue=""><option value="" disabled>Select a fictional demo bank</option><option>Demo Bank</option><option>Sample Payments Bank</option><option>Bank not known</option></select></label><label>When did the transaction happen?<input name="time" defaultValue="10:51 AM, 23 Aug 2026" /></label></div>
       <p className="missing-note">Still okay to continue: {missing.includes('transactionId') ? 'transaction ID can be found from your screenshot.' : 'we have the essential details.'}</p>
-      <button className="primary-button" type="submit">Show my first-response plan <span>→</span></button>
+      <button className="primary-button" type="submit" disabled={Boolean(busy)}>{busy ? 'Saving your response…' : <>Show my first-response plan <span>→</span></>}</button>
     </form>
   </section>;
 }
