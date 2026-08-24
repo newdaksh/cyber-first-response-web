@@ -6,7 +6,7 @@ const siteOrigin = 'https://cyber-first-response.daksh-jain819813.chatgpt.site';
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin),
   title: 'Cyber First Response — The first 30 minutes after a cybercrime',
-  description: 'An AI-assisted cybercrime first-response workflow for structured, evidence-backed, report-ready cases.',
+  description: 'A secure cybercrime first-response workflow for persistent, evidence-backed, report-ready cases.',
   openGraph: {
     title: 'Cyber First Response',
     description: 'The first 30 minutes after a cybercrime.',

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canTransition } from '../lib/incident.ts';
-import { aiProvider, calculateEvidenceCompleteness, demoDescription, demoScenarios, governmentService, parseClock, validateClassification } from '../lib/services.ts';
+import { canTransition, createFreshIncident } from '../lib/incident.ts';
+import { aiProvider, calculateEvidenceCompleteness, demoDescription, demoScenarios, officialReportingUrl, parseClock, validateClassification } from '../lib/services.ts';
 
 test('classifies the golden Hinglish scenario probabilistically', async () => {
   const result = await aiProvider.classifyIncident(demoDescription);
@@ -26,25 +26,32 @@ test('supports every required fraud classification', async () => {
 });
 
 test('calculates evidence completeness from fields, not decoration', async () => {
-  const result = await aiProvider.extractEvidence('demo.png');
+  const result = aiProvider.demoEvidence('demo.png');
   assert.equal(Object.keys(result.detected).length, 9);
   assert.equal(calculateEvidenceCompleteness(result.detected), 82);
   assert.equal(calculateEvidenceCompleteness({}), 0);
 });
 
 test('orders generated timeline chronologically', async () => {
-  const timeline = await aiProvider.generateTimeline({});
+  const incident = createFreshIncident();
+  incident.description = 'A suspicious transaction appeared in my account.';
+  const timeline = await aiProvider.generateTimeline(incident);
   const times = timeline.map((event) => parseClock(event.timestamp));
   assert.deepEqual(times, [...times].sort((a, b) => a - b));
-  assert.equal(timeline[0].title, 'Initial contact');
+  assert.equal(timeline[0].title, 'Initial contact or activity');
   assert.equal(timeline.at(-1).title, 'Fraud suspected');
 });
 
 test('generates a structured complaint with fictional identifiers', async () => {
-  const complaint = await aiProvider.generateComplaint({ entities: { transactionIds: ['DEMO2508231051'], upiIds: ['demo.receiver@upi'] } });
+  const incident = createFreshIncident();
+  incident.description = demoDescription;
+  incident.amount = 25000;
+  incident.entities.transactionIds = ['DEMO2508231051'];
+  incident.entities.upiIds = ['demo.receiver@upi'];
+  const complaint = await aiProvider.generateComplaint(incident);
   assert.match(complaint, /₹25,000/);
   assert.match(complaint, /DEMO2508231051/);
-  assert.match(complaint, /fictional demo data/i);
+  assert.match(complaint, /not been submitted automatically/i);
 });
 
 test('enforces sequential incident state transitions and reset', () => {
@@ -53,8 +60,6 @@ test('enforces sequential incident state transitions and reset', () => {
   assert.equal(canTransition('HANDOFF', 'NEW'), true);
 });
 
-test('government handoff is explicitly simulated', async () => {
-  const result = await governmentService.simulateHandoff();
-  assert.equal(result.status, 'simulated');
-  assert.match(result.message, /external official reporting/i);
+test('official handoff targets NCRP without claiming submission', () => {
+  assert.equal(officialReportingUrl, 'https://cybercrime.gov.in/');
 });

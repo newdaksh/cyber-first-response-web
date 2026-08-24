@@ -10,7 +10,8 @@
     "build": "vinext build",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "test:core": "node --experimental-strip-types --test tests/core.test.mjs"
+    "test:core": "node --experimental-strip-types --test tests/core.test.mjs",
+    "test:backend": "node tests/backend-smoke.mjs"
   },
   "dependencies": {
     "next": "16.2.6",

@@ -252,6 +252,11 @@ footer p { margin: 0; }
 .demo-receipt > span:nth-child(2) { display: grid; gap: 3px; }
 .demo-receipt small { color: var(--muted); font-size: 9px; }
 .demo-receipt b { color: var(--green); font-size: 9px; }
+.manual-evidence { margin: 12px 0; padding: 16px; border: 1px solid var(--line); border-radius: 13px; background: white; }
+.manual-evidence > strong { display: block; color: var(--ink); font-size: 12px; }
+.manual-evidence > p { margin: 4px 0 12px; color: var(--muted); font-size: 9px; }
+.manual-evidence .form-grid { grid-template-columns: 1fr 1fr; gap: 9px; }
+.manual-evidence .form-grid input { min-height: 40px; }
 .detected-panel { min-height: 330px; padding: 22px; border: 1px solid var(--line); border-radius: 17px; background: white; }
 .panel-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .panel-title h2 { margin: 0; font-family: Georgia, serif; font-size: 23px; }
