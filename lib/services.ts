@@ -1,4 +1,7 @@
 import type { ActionItem, ClassificationResult, Evidence, Incident, TimelineEvent } from './incident.ts';
+import { demoDescription } from './presentation.ts';
+
+export { calculateEvidenceCompleteness, demoDescription, officialReportingUrl } from './presentation.ts';
 
 export interface IncidentExtraction {
   language: Incident['language']; amount?: number; otpInvolved?: boolean; bank?: string;
@@ -103,8 +106,6 @@ export class IncidentAnalysisService {
 
 export const analysisService = new IncidentAnalysisService();
 export const aiProvider = analysisService;
-export const officialReportingUrl = 'https://cybercrime.gov.in/';
-export const demoDescription = 'Mujhe bank se call aaya tha KYC ke liye... OTP liya aur 25 hazaar kat gaya.';
 export const demoScenarios = [
   { id: 'bank-otp', label: 'Bank impersonation / OTP fraud', description: demoDescription, expectedType: 'bank_otp_fraud' },
   { id: 'upi', label: 'UPI fraud', description: 'A fake seller sent me a UPI collect request and ₹8,000 was debited.', expectedType: 'upi_payment_fraud' },
@@ -114,10 +115,6 @@ export const demoScenarios = [
   { id: 'digital-arrest', label: 'Digital arrest', description: 'Someone claiming to be police threatened digital arrest and demanded payment.', expectedType: 'digital_arrest' },
 ] as const;
 
-export function calculateEvidenceCompleteness(detected: Record<string, string>) {
-  const required = ['amount', 'transactionId', 'date', 'time', 'upiId', 'recipient', 'paymentStatus', 'merchantId', 'phoneNumber', 'chatHistory', 'bankAccount'];
-  return Math.round((required.filter((field) => Boolean(detected[field])).length / required.length) * 100);
-}
 export function parseClock(value: string) {
   const match = value.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (!match) return Number.MAX_SAFE_INTEGER;

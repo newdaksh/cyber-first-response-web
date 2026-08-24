@@ -1,5 +1,6 @@
 import { canTransition, type IncidentSnapshot, type IncidentStatus } from '../incident';
-import { analysisService, demoDescription } from '../services';
+import { demoDescription } from '../presentation';
+import { meshAnalysisService } from './llm';
 import { StoreError } from './store';
 import { text } from './http';
 
@@ -28,38 +29,38 @@ export async function applyCaseCommand(current: IncidentSnapshot, command: CaseC
     case 'loadDemo': {
       expectStatus(incident.status, ['NEW', 'INTAKE']);
       const [classification, extraction] = await Promise.all([
-        analysisService.classifyIncident(demoDescription),
-        analysisService.extractIncident(demoDescription),
+        meshAnalysisService.classifyIncident(demoDescription),
+        meshAnalysisService.extractIncident(demoDescription),
       ]);
       Object.assign(incident, extraction, {
         description: demoDescription,
         incidentType: classification.incidentType,
         confidence: classification.confidence,
         severity: classification.severity,
-        actionPlan: await analysisService.generateActionPlan({ ...incident, ...extraction, incidentType: classification.incidentType }),
+        actionPlan: await meshAnalysisService.generateActionPlan({ ...incident, ...extraction, incidentType: classification.incidentType }),
         status: 'TRIAGE' as const,
       });
       next.classification = classification;
-      next.missing = await analysisService.detectMissingFields(incident);
+      next.missing = await meshAnalysisService.detectMissingFields(incident);
       return next;
     }
     case 'analyze': {
       expectStatus(incident.status, ['INTAKE']);
       const description = text(command.description, 5000, 'Incident description');
       const [classification, extraction] = await Promise.all([
-        analysisService.classifyIncident(description),
-        analysisService.extractIncident(description),
+        meshAnalysisService.classifyIncident(description),
+        meshAnalysisService.extractIncident(description),
       ]);
       Object.assign(incident, extraction, {
         description,
         incidentType: classification.incidentType,
         confidence: classification.confidence,
         severity: classification.severity,
-        actionPlan: await analysisService.generateActionPlan({ ...incident, ...extraction, incidentType: classification.incidentType }),
+        actionPlan: await meshAnalysisService.generateActionPlan({ ...incident, ...extraction, incidentType: classification.incidentType }),
         status: 'TRIAGE' as const,
       });
       next.classification = classification;
-      next.missing = await analysisService.detectMissingFields(incident);
+      next.missing = await meshAnalysisService.detectMissingFields(incident);
       return next;
     }
     case 'clarify':
@@ -68,7 +69,7 @@ export async function applyCaseCommand(current: IncidentSnapshot, command: CaseC
       incident.incidentTime = text(command.time, 100, 'Incident time');
       incident.incidentDate ||= incident.incidentTime.match(/\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\b/)?.[0];
       incident.status = 'ACTION_REQUIRED';
-      next.missing = await analysisService.detectMissingFields(incident);
+      next.missing = await meshAnalysisService.detectMissingFields(incident);
       return next;
     case 'toggleAction': {
       expectStatus(incident.status, ['ACTION_REQUIRED']);
@@ -84,12 +85,12 @@ export async function applyCaseCommand(current: IncidentSnapshot, command: CaseC
     case 'timeline':
       expectStatus(incident.status, ['EVIDENCE_COLLECTION']);
       if (!incident.evidence.length) throw new StoreError(400, 'Add an evidence item before building the timeline.');
-      incident.timeline = await analysisService.generateTimeline(incident, next.detected);
+      incident.timeline = await meshAnalysisService.generateTimeline(incident, next.detected);
       incident.status = 'TIMELINE_READY';
       return next;
     case 'complaint':
       expectStatus(incident.status, ['CASE_READY']);
-      incident.complaint = { ...incident.complaint, draft: await analysisService.generateComplaint(incident, next.detected), handoffStatus: 'ready' };
+      incident.complaint = { ...incident.complaint, draft: await meshAnalysisService.generateComplaint(incident, next.detected), handoffStatus: 'ready' };
       incident.status = 'COMPLAINT_READY';
       return next;
     case 'editComplaint':
