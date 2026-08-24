@@ -70,3 +70,11 @@ test('official routes are defined for NCRP, suspect reports, CEIR, and technical
   assert.match(officialLinks.ceir, /sancharsaathi/);
   assert.equal(getIncidentGuide('lost_or_stolen_phone').reportingRoute, 'ceir');
 });
+
+test('loads saved cases that use legacy incident category names', () => {
+  assert.equal(getIncidentGuide('bank_otp_fraud').type, 'card_or_banking_fraud');
+  assert.equal(getIncidentGuide('investment_scam').type, 'investment_or_crypto_scam');
+  assert.equal(getIncidentGuide('digital_arrest').type, 'impersonation_or_digital_arrest');
+  assert.equal(getIncidentGuide('phishing').type, 'phishing_or_vishing');
+  assert.equal(getIncidentGuide('unknown_future_type').type, 'other');
+});

@@ -145,11 +145,19 @@ export const incidentGuides: Record<IncidentType, IncidentGuide> = {
   },
 };
 
-export function getIncidentGuide(type?: IncidentType): IncidentGuide {
-  return incidentGuides[type ?? 'other'];
+const legacyIncidentTypes: Record<string, IncidentType> = {
+  bank_otp_fraud: 'card_or_banking_fraud',
+  investment_scam: 'investment_or_crypto_scam',
+  digital_arrest: 'impersonation_or_digital_arrest',
+  phishing: 'phishing_or_vishing',
+};
+
+export function getIncidentGuide(type?: IncidentType | string): IncidentGuide {
+  const normalized = type && type in legacyIncidentTypes ? legacyIncidentTypes[type] : type;
+  return incidentGuides[normalized as IncidentType] ?? incidentGuides.other;
 }
 
-export function getEvidenceRequirements(type?: IncidentType) {
+export function getEvidenceRequirements(type?: IncidentType | string) {
   const unique = new Map<EvidenceFieldKey, EvidenceField>();
   for (const field of getIncidentGuide(type).evidence) unique.set(field.key, field);
   return [...unique.values()];
