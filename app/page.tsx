@@ -289,6 +289,10 @@ function Intake({ mode, incident, busy, error, onDescription, onVoice, onAnalyze
 }
 
 function Triage({ incident, classification, missing, onSubmit, onBack, busy }: { incident: Incident; classification: ClassificationResult | null; missing: string[]; onSubmit: (data: FormData) => Promise<void>; onBack: () => void; busy: string | null }) {
+  const [bank, setBank] = useState('');
+  const [time, setTime] = useState('');
+  const answersComplete = Boolean(bank && time);
+
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onSubmit(new FormData(event.currentTarget));
@@ -308,9 +312,9 @@ function Triage({ incident, classification, missing, onSubmit, onBack, busy }: {
     </div>
     <form className="clarify-card" onSubmit={submitForm} aria-busy={Boolean(busy)}>
       <div className="card-heading"><span className="step-number light">?</span><div><h2>Two quick questions</h2><p>Only the details that change what you should do next.</p></div></div>
-      <div className="form-grid"><label>Which bank was involved?<select name="bank" defaultValue=""><option value="" disabled>Select a fictional demo bank</option><option>Demo Bank</option><option>Sample Payments Bank</option><option>Bank not known</option></select></label><label>When did the transaction happen?<input name="time" defaultValue="10:51 AM, 23 Aug 2026" /></label></div>
-      <p className="missing-note">Still okay to continue: {missing.includes('transactionId') ? 'transaction ID can be found from your screenshot.' : 'we have the essential details.'}</p>
-      <button className="primary-button" type="submit" disabled={Boolean(busy)}>{busy ? 'Saving your response…' : <>Show my first-response plan <span>→</span></>}</button>
+      <div className="form-grid"><label>Which bank was involved?<select name="bank" value={bank} onChange={(event) => setBank(event.target.value)} required><option value="" disabled>Select a fictional demo bank</option><option>Demo Bank</option><option>Sample Payments Bank</option><option>Bank not known</option></select></label><label>When did the transaction happen?<select name="time" value={time} onChange={(event) => setTime(event.target.value)} required><option value="" disabled>Select when it happened</option><option>Within the last 15 minutes</option><option>Today, 10:51 AM</option><option>Earlier today</option><option>Yesterday</option><option>I am not sure yet</option></select></label></div>
+      <p className="missing-note">Choose both answers to continue. {missing.includes('transactionId') ? 'The transaction ID can still be added from your screenshot.' : 'You can add more details later.'}</p>
+      <button className="primary-button" type="submit" disabled={Boolean(busy) || !answersComplete}>{busy ? 'Saving your response…' : <>Show my first-response plan <span>→</span></>}</button>
     </form>
   </section>;
 }
