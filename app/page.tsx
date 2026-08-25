@@ -131,6 +131,13 @@ export default function Home() {
   }
 
   async function toggleAction(id: string) {
+    // Completion should feel immediate during an urgent response. Persist the
+    // change in the background, then reconcile with the saved server snapshot.
+    setIncident((current) => ({
+      ...current,
+      actionPlan: current.actionPlan.map((action) => action.id === id ? { ...action, completed: !action.completed } : action),
+    }));
+    setError('');
     try { await command('toggleAction', { actionId: id }); }
     catch (cause) { setError(messageFrom(cause)); }
   }
