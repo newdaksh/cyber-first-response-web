@@ -1,7 +1,14 @@
-import type { CaseCommand } from '../../../lib/server/workflow';
+import { readCaseRequest } from '../../../lib/commands';
 import { applyCaseCommand } from '../../../lib/server/workflow';
 import { errorResponse, json, requireRevision } from '../../../lib/server/http';
-import { assertSameOrigin, createCurrentSnapshot, getSession, loadCurrentSnapshot, saveSnapshot, withSessionCookie } from '../../../lib/server/store';
+import {
+  assertSameOrigin,
+  createCurrentSnapshot,
+  getSession,
+  loadCurrentSnapshot,
+  saveSnapshot,
+  withSessionCookie,
+} from '../../../lib/server/store';
 
 export async function GET(request: Request) {
   const session = getSession(request);
@@ -17,7 +24,7 @@ export async function POST(request: Request) {
   const session = getSession(request);
   try {
     assertSameOrigin(request);
-    const body = await request.json() as CaseCommand | { action: 'reset' };
+    const body = await readCaseRequest(request);
     if (body.action === 'reset') {
       const snapshot = await createCurrentSnapshot(session.id);
       return withSessionCookie(json({ snapshot }, 201), request, session);

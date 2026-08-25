@@ -1,32 +1,70 @@
 import { analysisService } from '../../../../lib/services';
+import {
+  ALLOWED_EVIDENCE_TYPES,
+  evidenceFieldKeys,
+  hasValidEvidenceSignature,
+  MAX_EVIDENCE_FILE_BYTES,
+  normalizeEvidenceField,
+  safeEvidenceFileName,
+} from '../../../../lib/evidence';
+import { StoreError } from '../../../../lib/errors';
 import { errorResponse, json, requireRevision } from '../../../../lib/server/http';
-import { assertSameOrigin, getSession, loadCurrentSnapshot, putEvidenceObject, saveEvidenceObject, saveSnapshot, StoreError, withSessionCookie } from '../../../../lib/server/store';
-
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']);
+import {
+  assertSameOrigin,
+  deleteEvidenceObject,
+  getSession,
+  loadCurrentSnapshot,
+  putEvidenceObject,
+  saveSnapshotWithEvidence,
+  withSessionCookie,
+} from '../../../../lib/server/store';
 
 export async function POST(request: Request) {
   const session = getSession(request);
   try {
     assertSameOrigin(request);
+    if (!request.headers.get('content-type')?.toLowerCase().startsWith('multipart/form-data;')) {
+      throw new StoreError(415, 'Send evidence as multipart/form-data.');
+    }
+    const declaredLength = Number(request.headers.get('content-length'));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_EVIDENCE_FILE_BYTES + 64 * 1024) {
+      throw new StoreError(413, 'The evidence request is too large.');
+    }
     const form = await request.formData();
     const current = await loadCurrentSnapshot(session.id);
     if (!current) throw new StoreError(404, 'Start a case before adding evidence.');
     requireRevision(Number(form.get('revision')), current);
-    if (current.incident.status !== 'EVIDENCE_COLLECTION') throw new StoreError(409, 'Evidence can only be added during evidence collection.');
+    if (current.incident.status !== 'EVIDENCE_COLLECTION')
+      throw new StoreError(409, 'Evidence can only be added during evidence collection.');
 
     const isDemo = form.get('demo') === 'true';
     const fileValue = form.get('file');
-    const file = fileValue instanceof File && fileValue.size ? fileValue : null;
+    const file = !isDemo && fileValue instanceof File && fileValue.size ? fileValue : null;
     if (!isDemo && !file) throw new StoreError(400, 'Choose an evidence file to upload.');
-    if (file && file.size > MAX_FILE_BYTES) throw new StoreError(413, 'Evidence files must be 10 MB or smaller.');
-    if (file && !ALLOWED_TYPES.has(file.type)) throw new StoreError(415, 'Upload a PNG, JPG, WebP, or PDF file.');
+    if (file && file.size > MAX_EVIDENCE_FILE_BYTES)
+      throw new StoreError(413, 'Evidence files must be 10 MB or smaller.');
+    if (file && !ALLOWED_EVIDENCE_TYPES.has(file.type))
+      throw new StoreError(415, 'Upload a PNG, JPG, WebP, or PDF file.');
 
-    const result = isDemo ? analysisService.demoEvidence() : manualEvidence(form, file!);
-    const objectKey = file ? `${current.incident.id}/${result.evidence.id}/${safeFileName(file.name)}` : null;
-    const digest = file ? await sha256(file) : null;
-    if (file && objectKey && digest) await putEvidenceObject(objectKey, file, digest);
-    await saveEvidenceObject({
+    const storedFileName = file ? safeEvidenceFileName(file.name) : null;
+    const contents = file ? await file.arrayBuffer() : null;
+    if (file && contents && !hasValidEvidenceSignature(file.type, new Uint8Array(contents))) {
+      throw new StoreError(
+        415,
+        'The file contents do not match the selected PNG, JPG, WebP, or PDF type.',
+      );
+    }
+    const result = isDemo
+      ? analysisService.demoEvidence()
+      : manualEvidence(form, file!, storedFileName!);
+    const objectKey = file
+      ? `${current.incident.id}/${result.evidence.id}/${storedFileName}`
+      : null;
+    const digest = contents ? await sha256(contents) : null;
+    if (file && contents && objectKey && digest)
+      await putEvidenceObject(objectKey, contents, file.type, digest);
+
+    const record = {
       id: result.evidence.id,
       incidentId: current.incident.id,
       objectKey,
@@ -35,7 +73,7 @@ export async function POST(request: Request) {
       byteSize: file?.size || 0,
       sha256: digest,
       extracted: result.detected,
-    });
+    };
 
     const changed = structuredClone(current);
     changed.detected = { ...changed.detected, ...result.detected };
@@ -43,32 +81,60 @@ export async function POST(request: Request) {
     changed.incident.entities = {
       ...changed.incident.entities,
       upiIds: appendUnique(changed.incident.entities.upiIds, result.detected.recipient),
-      transactionIds: appendUnique(changed.incident.entities.transactionIds, result.detected.transactionId),
+      transactionIds: appendUnique(
+        changed.incident.entities.transactionIds,
+        result.detected.transactionId,
+      ),
       phoneNumbers: appendUnique(changed.incident.entities.phoneNumbers, result.detected.contact),
       urls: appendUnique(changed.incident.entities.urls, result.detected.url),
       emails: appendUnique(changed.incident.entities.emails, result.detected.email),
     };
-    const snapshot = await saveSnapshot(session.id, changed, current.revision);
+    let snapshot;
+    try {
+      snapshot = await saveSnapshotWithEvidence(session.id, changed, current.revision, record);
+    } catch (error) {
+      if (objectKey) {
+        try {
+          await deleteEvidenceObject(objectKey);
+        } catch {
+          console.warn('An unsuccessful evidence upload left a blob for scheduled cleanup.');
+        }
+      }
+      throw error;
+    }
     return withSessionCookie(json({ snapshot }, 201), request, session);
   } catch (error) {
     return withSessionCookie(errorResponse(error), request, session);
   }
 }
 
-function manualEvidence(form: FormData, file: File) {
-  const keys = ['date', 'time', 'platform', 'contact', 'username', 'url', 'email', 'amount', 'transactionId', 'recipient', 'accountId', 'device', 'imei', 'chatHistory', 'policeReport'];
-  const detected = Object.fromEntries(keys.map((key) => [key, optional(form, key)]).filter(([, value]) => Boolean(value))) as Record<string, string>;
-  detected.screenshot = `Supporting file: ${file.name}`;
-  return { evidence: { id: crypto.randomUUID(), name: file.name, type: file.type === 'application/pdf' ? 'Evidence document' : 'Evidence image', status: 'manual' as const, extracted: detected }, detected };
+function manualEvidence(form: FormData, file: File, storedFileName: string) {
+  const detected = Object.fromEntries(
+    evidenceFieldKeys
+      .map((key) => [key, optional(form, key)])
+      .filter(([, value]) => Boolean(value)),
+  ) as Record<string, string>;
+  detected.screenshot = `Supporting file: ${storedFileName}`;
+  return {
+    evidence: {
+      id: crypto.randomUUID(),
+      name: storedFileName,
+      type: file.type === 'application/pdf' ? 'Evidence document' : 'Evidence image',
+      status: 'manual' as const,
+      extracted: detected,
+    },
+    detected,
+  };
 }
 
 function optional(form: FormData, key: string) {
   const value = form.get(key);
-  return typeof value === 'string' ? value.trim().slice(0, 200) : '';
+  return normalizeEvidenceField(value);
 }
-function appendUnique(values: string[], value?: string) { return value && !values.includes(value) ? [...values, value] : values; }
-function safeFileName(name: string) { return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-160) || 'evidence'; }
-async function sha256(file: File) {
-  const hash = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+function appendUnique(values: string[], value?: string) {
+  return value && !values.includes(value) ? [...values, value] : values;
+}
+async function sha256(contents: ArrayBuffer) {
+  const hash = await crypto.subtle.digest('SHA-256', contents);
   return [...new Uint8Array(hash)].map((value) => value.toString(16).padStart(2, '0')).join('');
 }

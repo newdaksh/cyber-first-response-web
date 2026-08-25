@@ -1,7 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canTransition, createFreshIncident } from '../lib/incident.ts';
-import { aiProvider, demoDescription, demoScenarios, getEvidenceRequirements, getIncidentGuide, officialLinks, parseClock, validateClassification } from '../lib/services.ts';
+import {
+  aiProvider,
+  demoDescription,
+  demoScenarios,
+  getEvidenceRequirements,
+  getIncidentGuide,
+  officialLinks,
+  parseClock,
+  validateClassification,
+} from '../lib/services.ts';
 
 test('classifies the golden Hinglish scenario probabilistically', async () => {
   const result = await aiProvider.classifyIncident(demoDescription);
@@ -32,7 +41,10 @@ test('provides evidence requirements that match the incident type', async () => 
   const ransomware = getEvidenceRequirements('ransomware_or_malware');
   assert.ok(financial.some((field) => field.key === 'transactionId'));
   assert.ok(ransomware.some((field) => field.key === 'device'));
-  assert.notDeepEqual(financial.map((field) => field.key), ransomware.map((field) => field.key));
+  assert.notDeepEqual(
+    financial.map((field) => field.key),
+    ransomware.map((field) => field.key),
+  );
 });
 
 test('orders generated timeline chronologically', async () => {
@@ -40,7 +52,10 @@ test('orders generated timeline chronologically', async () => {
   incident.description = 'A suspicious transaction appeared in my account.';
   const timeline = await aiProvider.generateTimeline(incident);
   const times = timeline.map((event) => parseClock(event.timestamp));
-  assert.deepEqual(times, [...times].sort((a, b) => a - b));
+  assert.deepEqual(
+    times,
+    [...times].sort((a, b) => a - b),
+  );
   assert.equal(timeline[0].title, 'Incident reported by complainant');
   assert.equal(timeline.at(-1).title, 'First-response plan created');
 });
