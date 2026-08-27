@@ -1,6 +1,7 @@
 import { StoreError } from './errors.ts';
 import type { Incident, IncidentSnapshot, IncidentStatus } from './incident.ts';
 import { canTransition } from './incident.ts';
+import { isOccurrencePlatform, isPortalCategory, isPortalSubcategory } from './portal-fields.ts';
 import { demoDescription } from './presentation.ts';
 import { redactSensitiveText } from './security.ts';
 
@@ -8,7 +9,16 @@ export type CaseCommand =
   | { action: 'begin'; revision: number }
   | { action: 'loadDemo'; revision: number }
   | { action: 'analyze'; revision: number; description: string }
-  | { action: 'clarify'; revision: number; service: string; time: string }
+  | {
+      action: 'clarify';
+      revision: number;
+      service: string;
+      time: string;
+      portalCategory: string;
+      portalSubCategory: string;
+      occurrencePlatform: string;
+      financialLoss: string;
+    }
   | { action: 'toggleAction'; revision: number; actionId: string }
   | { action: 'advance'; revision: number; to: 'EVIDENCE_COLLECTION' | 'CASE_READY' }
   | { action: 'back'; revision: number }
@@ -73,6 +83,33 @@ export async function applyCaseCommand(
           incident.bank = incident.affectedService;
         }
       }
+      const portalCategory = requiredText(command.portalCategory, 80, 'Portal category');
+      if (!isPortalCategory(portalCategory)) {
+        throw new StoreError(400, 'The portal category is invalid.');
+      }
+      const portalSubCategory = requiredText(
+        command.portalSubCategory,
+        120,
+        'Complaint sub-category',
+      );
+      if (!isPortalSubcategory(portalCategory, portalSubCategory)) {
+        throw new StoreError(400, 'The complaint sub-category does not match its category.');
+      }
+      const occurrencePlatform = requiredText(
+        command.occurrencePlatform,
+        80,
+        'Occurrence platform',
+      );
+      if (!isOccurrencePlatform(occurrencePlatform)) {
+        throw new StoreError(400, 'The occurrence platform is invalid.');
+      }
+      incident.portalCategory = portalCategory;
+      incident.portalSubCategory = portalSubCategory;
+      incident.occurrencePlatform = occurrencePlatform;
+      if (command.financialLoss !== 'yes' && command.financialLoss !== 'no') {
+        throw new StoreError(400, 'Financial loss must be answered yes or no.');
+      }
+      incident.financialLoss = command.financialLoss === 'yes';
       incident.incidentTime = redactSensitiveText(requiredText(command.time, 100, 'Incident time'));
       incident.incidentDate ||= incident.incidentTime.match(
         /\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\b/,

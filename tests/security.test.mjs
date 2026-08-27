@@ -105,6 +105,10 @@ test('runs the workflow deterministically, redacts drafts, and preserves edits',
     revision: 0,
     service: '',
     time: 'Today',
+    portalCategory: 'Financial Fraud',
+    portalSubCategory: 'Fraud Call / Vishing',
+    occurrencePlatform: 'Other',
+    financialLoss: 'yes',
   });
   snapshot = await command(snapshot, {
     action: 'toggleAction',

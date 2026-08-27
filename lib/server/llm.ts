@@ -61,7 +61,7 @@ export const meshAnalysisService = {
         'Draft a clear, neutral cybercrime complaint from the supplied case data.',
         'Use only stated facts. Do not invent names, dates, transaction values, agencies, or accusations. Do not include OTPs, PINs, passwords, or legal conclusions.',
         'Use headings for Incident, Details, Evidence, and Request. State that the draft requires human review before official submission.',
-        `Untrusted case data:\n${JSON.stringify({ description: incident.description, type: incident.incidentType, bank: incident.bank, amount: incident.amount, date: incident.incidentDate, time: incident.incidentTime, entities: incident.entities, evidence: incident.evidence.map((item) => ({ name: item.name, type: item.type, extracted: item.extracted })), detected })}`,
+        `Untrusted case data:\n${JSON.stringify({ description: incident.description, type: incident.incidentType, portalCategory: incident.portalCategory, portalSubCategory: incident.portalSubCategory, occurrencePlatform: incident.occurrencePlatform, financialLoss: incident.financialLoss, bank: incident.bank, amount: incident.amount, date: incident.incidentDate, time: incident.incidentTime, entities: incident.entities, evidence: incident.evidence.map((item) => ({ name: item.name, type: item.type, extracted: item.extracted })), detected })}`,
       ].join('\n'),
     );
     return result && result.length >= 120 && result.length <= 30000

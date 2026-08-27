@@ -12,6 +12,12 @@ import {
 } from '../lib/incident';
 import { demoDescription } from '../lib/presentation';
 import {
+  occurrencePlatforms,
+  portalCategories,
+  portalSubcategories,
+  type PortalCategory,
+} from '../lib/portal-fields';
+import {
   getEvidenceRequirements,
   getIncidentGuide,
   incidentGuides,
@@ -26,6 +32,32 @@ const intakeOptions = [
   { id: 'type', icon: 'Aa', label: 'Type', note: 'Describe it in your words' },
   { id: 'upload', icon: '↑', label: 'Upload evidence', note: 'Screenshot, SMS or receipt' },
 ] as const;
+
+const financialInstitutionSuggestions = [
+  'State Bank of India',
+  'HDFC Bank',
+  'ICICI Bank',
+  'Axis Bank',
+  'Kotak Mahindra Bank',
+  'Punjab National Bank',
+  'Bank of Baroda',
+  'Canara Bank',
+  'Union Bank of India',
+  'Indian Bank',
+  'India Post Payments Bank',
+  'Airtel Payments Bank',
+];
+
+const walletProviders = [
+  'PhonePe',
+  'Paytm',
+  'Google Pay',
+  'Amazon Pay',
+  'PayU',
+  'MobiKwik',
+  'Razorpay',
+  'Other',
+];
 
 const stageLabels: Partial<Record<IncidentStatus, string>> = {
   INTAKE: 'Understand',
@@ -62,8 +94,13 @@ export default function Home() {
     url: '',
     email: '',
     amount: '',
+    financialInstitution: '',
+    walletProvider: '',
     transactionId: '',
+    bankReference: '',
     recipient: '',
+    suspectInstitution: '',
+    ifsc: '',
     accountId: '',
     device: '',
     imei: '',
@@ -159,8 +196,13 @@ export default function Home() {
         url: '',
         email: '',
         amount: '',
+        financialInstitution: '',
+        walletProvider: '',
         transactionId: '',
+        bankReference: '',
         recipient: '',
+        suspectInstitution: '',
+        ifsc: '',
         accountId: '',
         device: '',
         imei: '',
@@ -240,6 +282,10 @@ export default function Home() {
       await command('clarify', {
         service: String(formData.get('service') || ''),
         time: String(formData.get('time') || ''),
+        portalCategory: String(formData.get('portalCategory') || ''),
+        portalSubCategory: String(formData.get('portalSubCategory') || ''),
+        occurrencePlatform: String(formData.get('occurrencePlatform') || ''),
+        financialLoss: String(formData.get('financialLoss') || ''),
       });
     } catch (cause) {
       setError(messageFrom(cause));
@@ -852,7 +898,27 @@ function Triage({
   const guide = getIncidentGuide(incident.incidentType);
   const [service, setService] = useState(incident.affectedService ?? incident.bank ?? '');
   const [time, setTime] = useState('');
-  const answersComplete = Boolean(time);
+  const suggestedCategory = portalCategoryForRoute(guide.reportingRoute);
+  const [portalCategory, setPortalCategory] = useState<PortalCategory>(
+    (incident.portalCategory as PortalCategory | undefined) ?? suggestedCategory,
+  );
+  const [portalSubCategory, setPortalSubCategory] = useState(
+    incident.portalSubCategory ?? suggestedSubcategory(incident.incidentType, suggestedCategory),
+  );
+  const [occurrencePlatform, setOccurrencePlatform] = useState(
+    incident.occurrencePlatform ??
+      inferOccurrencePlatform(incident.affectedService ?? incident.bank),
+  );
+  const [financialLoss, setFinancialLoss] = useState(
+    incident.financialLoss === true || incident.amount
+      ? 'yes'
+      : incident.financialLoss === false
+        ? 'no'
+        : '',
+  );
+  const answersComplete = Boolean(
+    time && portalCategory && portalSubCategory && occurrencePlatform && financialLoss,
+  );
 
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -891,7 +957,7 @@ function Triage({
         <strong className={`severity ${incident.severity}`}>{incident.severity} priority</strong>
       </div>
       <div className="understood-grid">
-        <Detail label="Incident type" value={guide.category} state="found" />
+        <Detail label="Official portal category" value={suggestedCategory} state="found" />
         <Detail
           label="Financial loss"
           value={incident.amount ? `₹${incident.amount.toLocaleString('en-IN')}` : 'Not reported'}
@@ -933,18 +999,94 @@ function Triage({
         <div className="card-heading">
           <span className="step-number light">?</span>
           <div>
-            <h2>Two quick questions</h2>
-            <p>Only details that change the immediate safety and reporting route.</p>
+            <h2>Check the official reporting fields</h2>
+            <p>Only the fields that affect immediate safety, evidence, and the reporting route.</p>
           </div>
         </div>
         <div className="form-grid">
           <label>
-            Affected service, app, website, or device (if known)
+            Category of complaint
+            <select
+              name="portalCategory"
+              value={portalCategory}
+              onChange={(event) => {
+                const category = event.target.value as PortalCategory;
+                setPortalCategory(category);
+                setPortalSubCategory('');
+              }}
+              required
+            >
+              {portalCategories.map((category) => (
+                <option key={category}>{category}</option>
+              ))}
+            </select>
+            <small>Suggested from your description; change it if another route fits better.</small>
+          </label>
+          <label>
+            Sub-category of complaint
+            <select
+              name="portalSubCategory"
+              value={portalSubCategory}
+              onChange={(event) => setPortalSubCategory(event.target.value)}
+              required
+            >
+              <option value="" disabled>
+                Select the closest sub-category
+              </option>
+              {portalSubcategories[portalCategory].map((subcategory) => (
+                <option key={subcategory}>{subcategory}</option>
+              ))}
+            </select>
+          </label>
+          <fieldset className="radio-field">
+            <legend>Have you lost money?</legend>
+            <div>
+              <label>
+                <input
+                  type="radio"
+                  name="financialLoss"
+                  value="yes"
+                  checked={financialLoss === 'yes'}
+                  onChange={(event) => setFinancialLoss(event.target.value)}
+                  required
+                />
+                Yes
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="financialLoss"
+                  value="no"
+                  checked={financialLoss === 'no'}
+                  onChange={(event) => setFinancialLoss(event.target.value)}
+                />
+                No
+              </label>
+            </div>
+          </fieldset>
+          <label>
+            Where did the incident occur?
+            <select
+              name="occurrencePlatform"
+              value={occurrencePlatform}
+              onChange={(event) => setOccurrencePlatform(event.target.value)}
+              required
+            >
+              <option value="" disabled>
+                Select a platform
+              </option>
+              {occurrencePlatforms.map((platform) => (
+                <option key={platform}>{platform}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {platformIdentifierLabel(occurrencePlatform)} (if known)
             <input
               name="service"
               value={service}
               onChange={(event) => setService(event.target.value)}
-              placeholder="For example: WhatsApp, a bank, a laptop"
+              placeholder={platformIdentifierPlaceholder(occurrencePlatform)}
               maxLength={120}
             />
           </label>
@@ -1264,12 +1406,14 @@ function EvidenceScreen({
               <b>{fileName === 'demo-payment-receipt.png' ? '✓ Selected' : 'Select →'}</b>
             </button>
           )}
-          {fileName && fileName !== 'demo-payment-receipt.png' && (
+          {fileName !== 'demo-payment-receipt.png' && (
             <div className="manual-evidence">
               <strong>Record the relevant visible details</strong>
               <p>
-                Automatic OCR is not used. Do not upload or forward illegal sexual content, and
-                never enter a password, OTP, PIN, CVV, or recovery code.
+                {fileName
+                  ? 'Automatic OCR is not used. Record only details you can verify from the original.'
+                  : 'These are the details the official complaint flow may request. Choose a supporting file before storing them.'}{' '}
+                Never enter a password, OTP, PIN, CVV, or recovery code.
               </p>
               <div className="form-grid">
                 {requirements
@@ -1278,15 +1422,19 @@ function EvidenceScreen({
                     <label key={field.key}>
                       {field.label}
                       {field.critical && <small>Required if known</small>}
-                      <input
+                      <EvidenceFieldControl
+                        field={field}
                         value={evidenceFields[field.key] ?? ''}
-                        onChange={(event) => onField(field.key, event.target.value)}
-                        placeholder={field.help}
-                        maxLength={200}
+                        onChange={(value) => onField(field.key, value)}
                       />
                     </label>
                   ))}
               </div>
+              <datalist id="financial-institutions">
+                {financialInstitutionSuggestions.map((institution) => (
+                  <option key={institution} value={institution} />
+                ))}
+              </datalist>
             </div>
           )}
           {error && (
@@ -1374,6 +1522,72 @@ function EvidenceScreen({
         </button>
       </div>
     </section>
+  );
+}
+
+function EvidenceFieldControl({
+  field,
+  value,
+  onChange,
+}: {
+  field: ReturnType<typeof getEvidenceRequirements>[number];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  if (field.key === 'platform') {
+    return (
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Select a platform</option>
+        {occurrencePlatforms.map((platform) => (
+          <option key={platform}>{platform}</option>
+        ))}
+      </select>
+    );
+  }
+  if (field.key === 'walletProvider') {
+    return (
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Not applicable / select provider</option>
+        {walletProviders.map((provider) => (
+          <option key={provider}>{provider}</option>
+        ))}
+      </select>
+    );
+  }
+
+  const usesInstitutionList =
+    field.key === 'financialInstitution' || field.key === 'suspectInstitution';
+  const inputType =
+    field.key === 'date'
+      ? 'date'
+      : field.key === 'time'
+        ? 'time'
+        : field.key === 'amount'
+          ? 'number'
+          : 'text';
+  return (
+    <input
+      type={inputType}
+      value={value}
+      onChange={(event) =>
+        onChange(field.key === 'ifsc' ? event.target.value.toUpperCase() : event.target.value)
+      }
+      placeholder={inputType === 'text' ? field.help : undefined}
+      list={usesInstitutionList ? 'financial-institutions' : undefined}
+      inputMode={
+        field.key === 'amount' ? 'decimal' : field.key === 'transactionId' ? 'numeric' : undefined
+      }
+      min={field.key === 'amount' ? '0' : undefined}
+      step={field.key === 'amount' ? '0.01' : undefined}
+      maxLength={field.key === 'transactionId' ? 12 : field.key === 'ifsc' ? 11 : 200}
+      pattern={
+        field.key === 'transactionId'
+          ? '[0-9]{12}'
+          : field.key === 'ifsc'
+            ? '[A-Z]{4}0[A-Z0-9]{6}'
+            : undefined
+      }
+    />
   );
 }
 
@@ -1498,6 +1712,21 @@ function CaseFile({
                 state="warning"
               />
               <Detail label="Response route" value={guide.category} state="found" />
+              <Detail
+                label="Portal category"
+                value={incident.portalCategory ?? portalCategoryForRoute(guide.reportingRoute)}
+                state="found"
+              />
+              <Detail
+                label="Complaint sub-category"
+                value={incident.portalSubCategory ?? 'Confirm on the official portal'}
+                state={incident.portalSubCategory ? 'found' : 'missing'}
+              />
+              <Detail
+                label="Occurrence platform"
+                value={incident.occurrencePlatform ?? 'Not confirmed'}
+                state={incident.occurrencePlatform ? 'found' : 'missing'}
+              />
               <Detail
                 label="Date & time"
                 value={
@@ -1641,7 +1870,7 @@ function ComplaintScreen({
     'The amount and transaction details are correct',
     'The chronology matches what I remember',
     'No OTP, PIN, or password is included',
-    'I understand this has not been submitted',
+    'I declare this information is accurate to the best of my knowledge, and understand it has not been submitted',
   ];
   const [checks, setChecks] = useState(() =>
     reviewItems.map((_, index) => reviewed || index === 2),
@@ -1681,7 +1910,7 @@ function ComplaintScreen({
                 Copy
               </button>
               <button type="button" onClick={() => window.print()}>
-                Print
+                Print / save PDF
               </button>
             </div>
           </div>
@@ -1827,7 +2056,7 @@ function Handoff({
         <div>
           <span aria-hidden="true">✓</span>
           <strong>Official route selected</strong>
-          <small>{guide.category}</small>
+          <small>{incident.portalCategory ?? portalCategoryForRoute(guide.reportingRoute)}</small>
         </div>
       </div>
       <div className="handoff-card">
@@ -1971,6 +2200,63 @@ function TrustFooter() {
     </footer>
   );
 }
+
+function portalCategoryForRoute(route: string): PortalCategory {
+  if (route === 'women_child') return 'Women/Children Related Crime';
+  if (route === 'financial') return 'Financial Fraud';
+  return 'Other Cyber Crime';
+}
+
+function suggestedSubcategory(type: Incident['incidentType'], category: PortalCategory): string {
+  const suggestions: Partial<Record<NonNullable<Incident['incidentType']>, string>> = {
+    upi_payment_fraud: 'UPI Related Frauds',
+    card_or_banking_fraud: 'Debit / Credit Card Fraud / SIM Swap Fraud',
+    impersonation_or_digital_arrest: 'Fraud Call / Vishing',
+    phishing_or_vishing: 'Cyber Threats',
+    account_takeover: 'Unauthorised Access / Hacking',
+    social_media_abuse: 'Social Media Impersonation',
+    cyber_stalking_or_bullying: 'Cyberstalking',
+    sextortion_or_intimate_content: 'Non-consensual Imagery',
+    child_safety_or_grooming: 'Child Sexual Abuse Material (CSAM)',
+    identity_theft_or_sim_swap: 'Identity Theft',
+    ransomware_or_malware: 'Unauthorised Access / Hacking',
+    hacking_or_data_breach: 'Unauthorised Access / Hacking',
+    website_defacement: 'Unauthorised Access / Hacking',
+    other: 'Other Cyber Crime',
+  };
+  const suggestion = type ? suggestions[type] : undefined;
+  return suggestion && portalSubcategories[category].includes(suggestion) ? suggestion : '';
+}
+
+function inferOccurrencePlatform(service?: string) {
+  if (!service) return '';
+  const normalized = service.toLowerCase();
+  const matched = occurrencePlatforms.find((platform) =>
+    normalized.includes(platform.replace('Twitter (X)', 'twitter').toLowerCase()),
+  );
+  if (matched) return matched;
+  if (normalized === 'x' || normalized.includes(' x.com')) return 'Twitter (X)';
+  if (normalized.includes('web') || normalized.startsWith('http')) return 'Website URL';
+  if (normalized.includes('app')) return 'Mobile App';
+  return 'Other';
+}
+
+function platformIdentifierLabel(platform: string) {
+  if (platform === 'Email') return 'Email address';
+  if (platform === 'Website URL') return 'Website URL';
+  if (platform === 'Mobile App') return 'App name or link';
+  if (platform === 'Other') return 'Platform, service, or device details';
+  return platform ? `${platform} handle or URL` : 'Platform handle, URL, or app name';
+}
+
+function platformIdentifierPlaceholder(platform: string) {
+  if (platform === 'Email') return 'For example: sender@example.com';
+  if (platform === 'Website URL') return 'For example: https://example.com/page';
+  if (platform === 'Mobile App') return 'For example: app name or store link';
+  if (platform === 'Other') return 'For example: bank, payment service, or device';
+  return platform ? `Enter the ${platform} profile or link` : 'Enter the visible identifier';
+}
+
 function formatKey(key: string) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, (value) => value.toUpperCase());
 }

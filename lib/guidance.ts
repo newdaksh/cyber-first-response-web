@@ -11,8 +11,13 @@ export type EvidenceFieldKey =
   | 'url'
   | 'email'
   | 'amount'
+  | 'financialInstitution'
+  | 'walletProvider'
   | 'transactionId'
+  | 'bankReference'
   | 'recipient'
+  | 'suspectInstitution'
+  | 'ifsc'
   | 'accountId'
   | 'device'
   | 'imei'
@@ -68,27 +73,53 @@ const standardEvidence: EvidenceField[] = [
 
 const financialEvidence: EvidenceField[] = [
   {
+    key: 'financialInstitution',
+    label: 'Victim bank / wallet / payment provider / merchant',
+    help: 'Start typing the provider name shown on the account or receipt.',
+    critical: true,
+  },
+  {
+    key: 'walletProvider',
+    label: 'Wallet / PG / PA service (if applicable)',
+    help: 'For example, PhonePe, Paytm, Google Pay, PayU, or Razorpay.',
+  },
+  {
+    key: 'accountId',
+    label: 'Account / wallet / merchant / UPI identifier',
+    help: 'For bank or card accounts, record only the last four digits in this prototype.',
+  },
+  {
     key: 'amount',
-    label: 'Amount lost or attempted',
-    help: 'Enter only the amount you can verify.',
+    label: 'Amount (₹)',
+    help: 'Enter only the fraud amount you can verify.',
     critical: true,
   },
   {
     key: 'transactionId',
-    label: 'Transaction / UTR reference',
-    help: 'From the bank, wallet, or payment receipt.',
+    label: 'Transaction ID / UTR number',
+    help: 'Enter the 12-digit UTR when one is shown on the receipt.',
     critical: true,
   },
   {
     key: 'recipient',
-    label: 'Recipient account, UPI ID, or merchant',
-    help: 'As shown on the receipt.',
+    label: 'Suspect / beneficiary account or UPI ID',
+    help: 'Record it exactly as shown on the transaction receipt.',
     critical: true,
   },
   {
-    key: 'accountId',
-    label: 'Affected account or card (last four digits only)',
-    help: 'Never enter a PIN, CVV, password, or OTP.',
+    key: 'suspectInstitution',
+    label: 'Suspect bank / wallet (if known)',
+    help: 'The destination bank or wallet shown in the transaction.',
+  },
+  {
+    key: 'ifsc',
+    label: 'Suspect IFSC code (if known)',
+    help: 'Enter the 11-character IFSC only when visible on a trusted record.',
+  },
+  {
+    key: 'bankReference',
+    label: 'Bank reference number (optional)',
+    help: 'Any separate alphanumeric reference shown by the bank.',
   },
   ...standardEvidence,
 ];

@@ -57,6 +57,10 @@ export function parseCaseRequest(value: unknown): CaseRequest {
         revision,
         service: stringValue(value.service, 'Affected service or platform'),
         time: stringValue(value.time, 'Incident time'),
+        portalCategory: optionalStringValue(value.portalCategory),
+        portalSubCategory: optionalStringValue(value.portalSubCategory),
+        occurrencePlatform: optionalStringValue(value.occurrencePlatform),
+        financialLoss: optionalStringValue(value.financialLoss),
       };
     case 'toggleAction':
       return {
@@ -87,6 +91,10 @@ function integer(value: unknown, field: string) {
 function stringValue(value: unknown, field: string) {
   if (typeof value !== 'string') throw new StoreError(400, `${field} must be text.`);
   return value;
+}
+
+function optionalStringValue(value: unknown) {
+  return typeof value === 'string' ? value : '';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -59,6 +59,10 @@ test('persists the complete server workflow and rejects spoofed evidence', async
   response = await command(request, baseURL!, 'clarify', body.snapshot.revision, {
     service: '',
     time: 'Today',
+    portalCategory: 'Financial Fraud',
+    portalSubCategory: 'Debit / Credit Card Fraud / SIM Swap Fraud',
+    occurrencePlatform: 'Other',
+    financialLoss: 'yes',
   });
   body = await response.json();
   response = await command(request, baseURL!, 'advance', body.snapshot.revision, {

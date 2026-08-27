@@ -412,6 +412,12 @@ export class IncidentAnalysisService {
       ...incident.entities.transactionIds.map((value) => `Transaction reference: ${value}`),
     ];
     const details = [
+      incident.portalCategory ? `Official portal category: ${incident.portalCategory}` : '',
+      incident.portalSubCategory ? `Complaint sub-category: ${incident.portalSubCategory}` : '',
+      incident.occurrencePlatform ? `Occurrence platform: ${incident.occurrencePlatform}` : '',
+      incident.financialLoss !== undefined
+        ? `Financial loss reported: ${incident.financialLoss ? 'Yes' : 'No'}`
+        : '',
       incident.affectedService || incident.bank
         ? `Affected service/platform: ${incident.affectedService || incident.bank}`
         : '',

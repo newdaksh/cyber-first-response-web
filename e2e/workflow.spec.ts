@@ -8,6 +8,7 @@ test('completes the primary incident response journey', async ({ page }) => {
 
   await page.getByRole('button', { name: /Load ₹25,000 demo incident/i }).click();
   await expect(page.getByRole('heading', { name: /Here's what we understood/i })).toBeVisible();
+  await page.getByLabel(/Where did the incident occur/i).selectOption({ label: 'Other' });
   await page.getByLabel(/When did you first notice/i).selectOption({ label: 'Today' });
   await page.getByRole('button', { name: /Show my first-response plan/i }).click();
 

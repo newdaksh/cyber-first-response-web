@@ -52,6 +52,10 @@ export interface Incident {
   amount?: number;
   bank?: string;
   affectedService?: string;
+  portalCategory?: string;
+  portalSubCategory?: string;
+  occurrencePlatform?: string;
+  financialLoss?: boolean;
   paymentMethod?: string;
   incidentDate?: string;
   incidentTime?: string;
