@@ -81,8 +81,6 @@ export default function Home() {
   const [detected, setDetected] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [lowData, setLowData] = useState(false);
-  const [largeText, setLargeText] = useState(false);
   const [transparency, setTransparency] = useState(false);
   const [fileName, setFileName] = useState('');
   const [evidenceFields, setEvidenceFields] = useState<Record<string, string>>({
@@ -210,7 +208,7 @@ export default function Home() {
         policeReport: '',
       });
       if (fileRef.current) fileRef.current.value = '';
-      window.scrollTo({ top: 0, behavior: lowData ? 'auto' : 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       setError(messageFrom(cause));
     } finally {
@@ -240,7 +238,7 @@ export default function Home() {
     setError('');
     try {
       await command('analyze', { description });
-      window.scrollTo({ top: 0, behavior: lowData ? 'auto' : 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       setError(messageFrom(cause));
     } finally {
@@ -393,7 +391,7 @@ export default function Home() {
     await nextPaint();
     try {
       await command('back');
-      window.scrollTo({ top: 0, behavior: lowData ? 'auto' : 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       setError(messageFrom(cause));
     } finally {
@@ -419,7 +417,7 @@ export default function Home() {
     try {
       await command('editComplaint', { draft: incident.complaint.draft });
       await command('back');
-      window.scrollTo({ top: 0, behavior: lowData ? 'auto' : 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (cause) {
       setError(messageFrom(cause));
     } finally {
@@ -438,9 +436,7 @@ export default function Home() {
     window.requestAnimationFrame(() => transparencyReturnFocusRef.current?.focus());
   }
 
-  const shellClass = ['site-shell', lowData && 'low-data', largeText && 'large-text']
-    .filter(Boolean)
-    .join(' ');
+  const shellClass = 'site-shell';
   const showWorkflow = incident.status !== 'NEW';
 
   return (
@@ -448,15 +444,7 @@ export default function Home() {
       <a className="skip-link" href="#main-content">
         Skip to incident workflow
       </a>
-      <AppHeader
-        lowData={lowData}
-        setLowData={setLowData}
-        largeText={largeText}
-        setLargeText={setLargeText}
-        onTransparency={openTransparency}
-        onReset={resetDemo}
-        showReset={showWorkflow}
-      />
+      <AppHeader onReset={resetDemo} showReset={showWorkflow} />
       {showWorkflow && <Progress status={incident.status} />}
 
       <div id="main-content" tabIndex={-1}>
@@ -569,23 +557,7 @@ export default function Home() {
   );
 }
 
-function AppHeader({
-  lowData,
-  setLowData,
-  largeText,
-  setLargeText,
-  onTransparency,
-  onReset,
-  showReset,
-}: {
-  lowData: boolean;
-  setLowData: (value: boolean) => void;
-  largeText: boolean;
-  setLargeText: (value: boolean) => void;
-  onTransparency: () => void;
-  onReset: () => void;
-  showReset: boolean;
-}) {
+function AppHeader({ onReset, showReset }: { onReset: () => void; showReset: boolean }) {
   return (
     <header className="topbar">
       <button
@@ -602,34 +574,11 @@ function AppHeader({
           <small>The first 30 minutes after a cybercrime.</small>
         </span>
       </button>
-      <div className="topbar-actions">
-        <label className="data-toggle">
-          <input
-            type="checkbox"
-            checked={lowData}
-            onChange={(event) => setLowData(event.target.checked)}
-          />
-          <span aria-hidden="true" />
-          Low-data
-        </label>
-        <button
-          className={largeText ? 'utility-button active' : 'utility-button'}
-          type="button"
-          onClick={() => setLargeText(!largeText)}
-          aria-pressed={largeText}
-          aria-label="Use larger text"
-        >
-          A<span aria-hidden="true">A</span>
+      {showReset && (
+        <button className="reset-button" type="button" onClick={onReset}>
+          ↻ Reset demo
         </button>
-        <button className="text-button" type="button" onClick={onTransparency}>
-          What is simulated?
-        </button>
-        {showReset && (
-          <button className="reset-button" type="button" onClick={onReset}>
-            ↻ Reset demo
-          </button>
-        )}
-      </div>
+      )}
     </header>
   );
 }

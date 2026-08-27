@@ -32,22 +32,6 @@ test('completes the primary incident response journey', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /complaint package/i })).toBeVisible();
 });
 
-test('keeps the transparency dialog keyboard-contained and available on mobile', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openRestoredCase(page);
-  const trigger = page.getByRole('button', { name: 'What is simulated?' });
-  await expect(trigger).toBeVisible();
-  await trigger.click();
-  const dialog = page.getByRole('dialog', { name: /What works/i });
-  await expect(dialog).toBeVisible();
-  await expectNoAccessibilityViolations(page);
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await expect(trigger).toBeFocused();
-});
-
 async function expectNoAccessibilityViolations(page: import('@playwright/test').Page) {
   const results = await new AxeBuilder({ page }).analyze();
   expect(

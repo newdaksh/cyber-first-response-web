@@ -126,61 +126,6 @@ textarea:focus-visible {
   font-size: 10px;
   margin-top: 1px;
 }
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.text-button {
-  border: 0;
-  background: none;
-  color: var(--green);
-  font-weight: 650;
-  cursor: pointer;
-}
-.data-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.data-toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.data-toggle span {
-  width: 34px;
-  height: 20px;
-  padding: 3px;
-  display: block;
-  border-radius: 20px;
-  background: #c9d3ce;
-  transition: 0.2s ease;
-}
-.data-toggle span::after {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: white;
-  display: block;
-  transition: 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-.data-toggle input:checked + span {
-  background: var(--green);
-}
-.data-toggle input:checked + span::after {
-  transform: translateX(14px);
-}
-.data-toggle input:focus-visible + span {
-  outline: 3px solid #e2a631;
-  outline-offset: 3px;
-}
 
 .hero {
   width: min(720px, calc(100% - 32px));
@@ -189,7 +134,24 @@ textarea:focus-visible {
   text-align: center;
 }
 .trust-pill {
-  display: none;
+  width: fit-content;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #6a5a44;
+  background: #f3ead7;
+  border: 1px solid #e6d6b8;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.trust-pill span {
+  width: 6px;
+  height: 6px;
+  background: #b7791f;
+  border-radius: 50%;
 }
 .eyebrow {
   margin: 0 0 16px;
@@ -420,12 +382,6 @@ footer p {
   margin: 0;
 }
 
-.low-data *,
-.low-data *::before,
-.low-data *::after {
-  animation: none !important;
-  transition: none !important;
-}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -445,11 +401,6 @@ footer p {
   .brand small {
     display: none;
   }
-  .topbar-actions {
-    width: 100%;
-    justify-content: flex-end;
-    gap: 12px;
-  }
   .brand-mark {
     width: 36px;
     height: 36px;
@@ -459,26 +410,6 @@ footer p {
   }
   .hero {
     padding-top: 35px;
-  }
-  .trust-pill {
-    width: fit-content;
-    margin: 0 auto 18px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: #6a5a44;
-    background: #f3ead7;
-    border: 1px solid #e6d6b8;
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 10px;
-    font-weight: 700;
-  }
-  .trust-pill span {
-    width: 6px;
-    height: 6px;
-    background: #b7791f;
-    border-radius: 50%;
   }
   .eyebrow {
     font-size: 10px;
@@ -554,25 +485,6 @@ footer p {
   cursor: pointer;
   text-align: left;
 }
-.utility-button {
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: white;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
-}
-.utility-button span {
-  font-size: 16px;
-}
-.utility-button.active {
-  border-color: var(--green);
-  color: var(--green);
-  background: var(--mint);
-}
 .reset-button {
   min-height: 38px;
   border: 1px solid var(--line);
@@ -583,9 +495,6 @@ footer p {
   font-size: 12px;
   font-weight: 750;
   cursor: pointer;
-}
-.large-text {
-  font-size: 112%;
 }
 .trust-pill.always {
   display: flex;
@@ -2678,15 +2587,6 @@ footer p {
 @media (max-width: 560px) {
   .topbar {
     flex-wrap: wrap;
-  }
-  .topbar-actions {
-    width: 100%;
-    justify-content: flex-end;
-    gap: 12px;
-  }
-  .reset-button {
-    padding: 0 9px;
-    font-size: 10px;
   }
   .progress-wrap ol {
     width: 660px;
